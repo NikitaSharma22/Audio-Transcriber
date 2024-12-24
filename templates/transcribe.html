@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcriber</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --border: #e2e8f0;
+            --error: #ef4444;
+            --success: #22c55e;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #fafafa;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+
+        /* Landing Screen Animation */
+        .landing-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fafafa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeOut 0.5s ease-out 2.5s forwards;
+        }
+
+        .landing-content {
+            text-align: center;
+            position: relative;
+        }
+
+        .landing-title {
+            font-size: 3rem;
+            color: var(--primary);
+            margin: 0;
+            opacity: 0;
+            transform: scale(0.5);
+            animation: popIn 0.6s ease-out forwards;
+        }
+
+        .landing-subtitle {
+            font-size: 1.5rem;
+            color: #64748b;
+            margin-top: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: slideUpFade 0.6s ease-out 0.3s forwards;
+        }
+
+        .sound-wave {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-top: 2rem;
+        }
+
+        .sound-bar {
+            width: 6px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 3px;
+            opacity: 0;
+            transform: scaleY(0.3);
+        }
+
+        @keyframes soundWave {
+            0%, 100% { transform: scaleY(0.3); }
+            50% { transform: scaleY(1); }
+        }
+
+        .sound-bar:nth-child(1) { animation: soundWave 1s ease-out 0.1s infinite, fadeIn 0.3s 0.6s forwards; }
+        .sound-bar:nth-child(2) { animation: soundWave 1s ease-out 0.2s infinite, fadeIn 0.3s 0.7s forwards; }
+        .sound-bar:nth-child(3) { animation: soundWave 1s ease-out 0.3s infinite, fadeIn 0.3s 0.8s forwards; }
+        .sound-bar:nth-child(4) { animation: soundWave 1s ease-out 0.4s infinite, fadeIn 0.3s 0.9s forwards; }
+        .sound-bar:nth-child(5) { animation: soundWave 1s ease-out 0.5s infinite, fadeIn 0.3s 1.0s forwards; }
+
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        @keyframes popIn {
+            to { 
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes slideUpFade {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+
+        .main-content {
+            opacity: 0;
+            transform: translateY(10px);
+            animation: contentFadeIn 0.8s ease-out 3s forwards;
+        }
+
+        @keyframes contentFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 2rem;
+            font-size: 1.875rem;
+            font-weight: 600;
+        }
+
+        .select-container {
+            margin: 1.5rem 0;
+        }
+
+        select {
+            width: 100%;
+            max-width: 300px;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.2s ease;
+            appearance: none;
+            background: white url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 1rem center;
+            background-size: 1em;
+        }
+
+        select:hover, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            transition: 0.2s ease;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            background: #f1f5f9;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn, .download-btn {
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
+            margin: 1rem 0;
+            transition: 0.2s ease;
+        }
+
+        .upload-btn:hover, .download-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+
+        .download-options {
+            display: none;
+            gap: 0.5rem;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .download-btn {
+            max-width: 90px;
+            margin: 0;
+            font-size: 0.875rem;
+            background: var(--success);
+        }
+
+        .progress-container {
+            width: 100%;
+            max-width: 300px;
+            margin: 1.5rem auto;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .progress-status {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+
+        #output {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            background: #f8fafc;
+            min-height: 100px;
+            text-align: left;
+            transition: 0.3s ease;
+            opacity: 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            white-space: pre-wrap;
+            line-height: 1.6;
+            justify-content: center;
+        }
+
+        #output.error {
+            background: #fef2f2;
+            color: var(--error);
+            opacity: 1;
+            text-align: center;
+            animation: shake 0.5s ease;
+            justify-content: center;
+            max-height: 50px;
+        }
+
+        #output.success {
+            background: #f0fdf4;
+            color: #1e293b;
+            opacity: 1;
+            animation: slideUp 0.5s ease;
+        }
+
+        .file-info {
+            margin: 1rem 0;
+            padding: 0.75rem;
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+            display: none;
+        }
+
+        .audio-player {
+            width: 100%;
+            max-width: 300px;
+            margin: 1rem auto;
+            display: none;
+        }
+
+        .audio-player audio {
+            width: 100%;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-screen">
+        <div class="landing-content">
+            <h1 class="landing-title">Audio Transcriber</h1>
+            <p class="landing-subtitle">Transform your voice into text</p>
+            <div class="sound-wave">
+                <div class="sound-bar"></div>
+                <div class="sound-bar"></div>
+                <div class="sound-bar"></div>
+                <div class="sound-bar"></div>
+                <div class="sound-bar"></div>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <h1>Audio Transcriber</h1>
+        <div class="upload-area" id="dropZone">
+            <div class="select-container">
+                <select id="languageSelect">
+                    <option value="" disabled selected>Select a language</option>
+                    <option value="en">English</option>
+                    <option value="hi-IN">Hindi</option>
+                </select>
+            </div>
+            <input type="file" id="fileInput" accept="audio/*">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Choose Audio File
+            </button>
+            <p>or drag and drop your file here</p>
+            <div class="file-info" id="fileInfo"></div>
+            <div class="audio-player" id="audioPlayer">
+                <audio controls>
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        </div>
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-status" id="progressStatus">Preparing...</div>
+        </div>
+        <div id="output"></div>
+        <div class="download-options" id="downloadOptions">
+            <button class="download-btn" data-format="txt">TXT</button>
+            <button class="download-btn" data-format="docx">DOCX</button>
+            <button class="download-btn" data-format="pdf">PDF</button>
+            <button class="download-btn" id="copyBtn">COPY</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.querySelector('.landing-screen').style.display = 'none';
+            }, 3000); // Remove landing screen after animations complete
+        });
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressStatus = document.getElementById('progressStatus');
+        const output = document.getElementById('output');
+        const fileInfo = document.getElementById('fileInfo');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const downloadOptions = document.getElementById('downloadOptions');
+        let currentFile = null;
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, preventDefault);
+        });
+
+        function preventDefault(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(e => {
+            dropZone.addEventListener(e, () => dropZone.style.background = '#f1f5f9');
+        });
+
+        ['dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, () => dropZone.style.background = '#fafafa');
+        });
+
+        dropZone.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+        fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+        function displayFileInfo(file) {
+            currentFile = file;
+            fileInfo.style.display = 'block';
+            fileInfo.textContent = `Selected file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            
+            // Setup audio player
+            const audio = audioPlayer.querySelector('audio');
+            audio.src = URL.createObjectURL(file);
+            audioPlayer.style.display = 'block';
+        }
+
+        function getFileNameWithoutExtension(fileName) {
+            return fileName.replace(/\.[^/.]+$/, "");
+        }
+
+        async function handleFile(file) {
+            if (!file || !file.type.startsWith('audio/')) {
+                showError('Please select a valid audio file.');
+                return;
+            }
+
+            const language = document.getElementById('languageSelect').value;
+            if (!language) {
+                showError('Please select a language.');
+                return;
+            }
+
+            displayFileInfo(file);
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('language', language);
+
+            progressContainer.style.display = 'block';
+            output.className = '';
+            output.textContent = '';
+            downloadOptions.style.display = 'none';
+
+            try {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/transcribe', true);
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progressFill.style.width = percentComplete + '%';
+                        progressStatus.textContent = `Uploading: ${Math.round(percentComplete)}%`;
+                    }
+                };
+
+                xhr.onload = async () => {
+                    if (xhr.status === 200) {
+                        progressFill.style.width = '100%';
+                        progressStatus.textContent = 'Processing transcription...';
+                        
+                        const result = JSON.parse(xhr.responseText);
+                        if (result.transcription) {
+                            progressStatus.textContent = 'Completed!';
+                            output.textContent = result.transcription;
+                            output.className = 'success';
+                            downloadOptions.style.display = 'flex';
+                            
+                            // Setup download buttons
+                            downloadOptions.querySelectorAll('.download-btn').forEach(btn => {
+                                btn.onclick = () => {
+                                    const format = btn.dataset.format;
+                                    const baseName = getFileNameWithoutExtension(currentFile.name);
+                                    downloadTranscription(result.transcription, `${baseName}.${format}`, format);
+                                };
+                            });
+                        } else {
+                            showError(result.error || 'Unknown error occurred.');
+                        }
+                    } else {
+                        showError('Error: Server returned an error.');
+                    }
+                };
+
+                xhr.onerror = () => {
+                    showError('Error: Could not connect to the server.');
+                };
+
+                xhr.send(formData);
+
+            } catch (error) {
+                showError('Error: Could not process the request.');
+            }
+        }
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+    const transcript = output.textContent;
+    if (transcript) {
+        navigator.clipboard.writeText(transcript).then(() => {
+            alert('Transcript copied to clipboard!');
+        }).catch(err => {
+            console.error('Error copying text: ', err);
+            alert('Failed to copy transcript');
+        });
+    } else {
+        alert('No transcription available to copy.');
+    }
+});
+
+        function downloadTranscription(text, filename, format) {
+    fetch(`/download/${format}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            text: text,
+            filename: filename
+        })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    })
+    .catch(error => console.error('Error downloading file:', error));
+}
+
+        function showError(message) {
+            progressContainer.style.display = 'none';
+            output.textContent = message;
+            output.className = 'error';
+            progressFill.style.width = '0%';
+            progressStatus.textContent = 'Preparing...';
+            downloadOptions.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
